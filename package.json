@@ -1,0 +1,16 @@
+{
+  "name": "cpp-web-runner",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.0",
+    "ioredis": "^5.6.1",
+    "monaco-editor": "^0.52.2",
+    "uuid": "^11.1.0"
+  }
+}

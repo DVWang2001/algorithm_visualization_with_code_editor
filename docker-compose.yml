@@ -1,0 +1,39 @@
+services:
+  node:
+    image: node:lts-alpine3.22
+    container_name: algorithm-visualizer-with-codeeditor
+    working_dir: /app
+    volumes:
+      - ./:/app
+    ports:
+      - "3000:3000"
+    networks:
+      - mynet
+    restart: "no"
+    command: sh "./start-node.sh"
+
+  gcc-container:
+    image: gcc:13.4.0-bookworm
+    working_dir: /app
+    volumes:
+      - ./cpp_temp:/app
+    environment:
+      - GCC_VERSION=13.4.0
+    networks:
+      - mynet
+    restart: "no"
+    command: sh "start-gcc.sh"
+  redis:
+    image: redis:8.0.2-alpine3.21
+    working_dir: /data
+    volumes:
+      - ./:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - mynet
+    restart: "no"
+
+networks:
+  mynet:
+    driver: bridge
