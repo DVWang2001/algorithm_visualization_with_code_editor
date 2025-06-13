@@ -1,0 +1,167 @@
+<!-- seditor , mongoeditor -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <title>C++ 控制 Canvas</title>
+  <style>
+    textarea { width: 100%; height: 200px; font-family: monospace; }
+    canvas { border: 1px solid black; margin-top: 10px; }
+    pre { background: #f0f0f0; padding: 1em; }
+  </style>
+</head>
+<body>
+  <select id="theme-select" style="margin-bottom: 10px;">
+    <option value="vs"selected>vs</option>
+    <option value="vs-dark">vs-dark</option>
+    <option value="hc-black">hc-black</option>
+    <option value="hc-light">hc-light</option>
+  </select>
+  <div id="code" style="width: 800px; height: 600px; border: 1px solid grey"></div>
+  <h1>C++ 控制 Canvas 畫圖</h1>
+  <button onclick="runCode()">執行</button>
+  <h3>輸出：</h3>
+  <pre id="output"></pre>
+
+  <canvas id="canvas" width="400" height="300"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // 定義允許的繪圖函式
+    var number = 0;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    function drawCircle(x, y, r,massage) {
+      const fixX = centerX+x;
+      const fixY = centerY+y
+      ctx.beginPath();
+      ctx.arc(fixX, fixY, r, 0, 2 * Math.PI);
+      ctx.fillStyle = "skyblue";
+      ctx.fill();
+      ctx.stroke();
+      // 設定文字
+      ctx.fillStyle = "black";
+      ctx.font = `${r}px Arial`;    // 文字大小可以依半徑調整
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      // 畫數字在圓心
+      ctx.fillText(massage, fixX, fixY);
+      number++;
+    }
+
+    async function runCode() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // 清空畫布
+      // const code = monaco.editor.getValue();
+      const code = monaco.editor.getModels()[0].getValue();
+
+      const res = await fetch('/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+
+      const data = await res.json();
+      document.getElementById('output').textContent = data.output;
+
+      try {
+        // 只執行允許的指令（安全性可再加強）
+        eval(data.output); 
+      } catch (e) {
+        alert("JS 錯誤：" + e.message);
+      }
+    }
+  </script>
+    <script src="/monaco/vs/loader.js"></script>
+  <script>
+    // 如果有多語言設定需求，可以設定 availableLanguages
+    require.config({
+      paths: { vs: '/monaco/vs' },
+      'vs/nls': {
+        availableLanguages: {
+		      '*': 'zh-tw' // 設定語言為繁體中文
+		    }
+      }
+    });
+
+    require(['vs/editor/editor.main'], function () {
+      var editor = monaco.editor.create(document.getElementById('code'), {
+        value: [
+          '// 輸出 JS 指令',
+          '#include <bits/stdc++.h>',
+          '#include "alg.h"',
+          'using namespace std;',
+          'void Move(int&n) {',
+          '  int tmp = 0;',
+          '  while (n) {',
+          '    tmp += (n%10)*(n%10);',
+          '    n /= 10;',
+          '  }',
+          '  n = tmp;',
+          '}',
+          'int main() {',
+          '  // 不快樂數',
+          '  int number = 2;',
+          '  int hare,tortoise;',
+          '  // 先確定是不是快樂數',
+          '  hare = number;',
+          '  tortoise = number;',
+          '  do',
+          '  {',
+          '    Move(hare);',
+          '    Move(hare);',
+          '    Move(tortoise);',
+          '  } while (hare != tortoise);',
+          '  // 如果不是快樂數就計算環長鏈長',
+          '  if (hare != 1 && tortoise != 1) {',
+          '    // cout << "A" << endl;',
+          '    // 兔子放回原點，然後兔子和烏龜一起一步一步走',
+          '    vector<int>links;',
+          '    vector<int>cycles;',
+          '    int link = 0;',
+          '    int cycle = 0;',
+          '    int cycle_start;',
+          '    hare = number;',
+          '    do',
+          '    {',
+          '      links.push_back(hare);',
+          '      Move(hare);',
+          '      Move(tortoise);',
+          '      link++;',
+          '    } while (hare != tortoise);',
+          '    cycle_start = hare;',
+          '    // 烏龜不動兔子動',
+          '    do',
+          '    {',
+          '      cycles.push_back(hare);',
+          '      Move(hare);',
+          '      cycle++;',
+          '    } while (hare != tortoise);',
+          '    vector<pair<double,double>>cycles_location;',
+          '    for (int i = 0; i < cycles.size(); i++) {',
+          '      cycles_location.push_back(circleLocation(100,i,cycles.size()));',
+          '      drawCircle(cycles_location[i].first,cycles_location[i].second,10,to_string(cycles[i]));',
+          '    }',
+          '  }',
+          '  else {',
+          '    // 輸出間隔為半徑2倍的鏈',
+          '    // cout << "B" << endl;',
+          '  }',
+          '  return 0;',
+          '}'
+        ].join('\n'),
+        language: 'cpp',
+        automaticLayout: true
+      });
+      monaco.editor.setTheme('vs'); // 設定主題為暗色
+      // 監聽下拉選單切換主題
+      const themeSelect = document.getElementById('theme-select');
+      themeSelect.addEventListener('change', function() {
+        monaco.editor.setTheme(this.value);
+      });
+    });
+  </script>
+</body>
+</html>
