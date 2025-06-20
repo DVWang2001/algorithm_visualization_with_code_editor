@@ -1,7 +1,6 @@
 services:
   node:
     image: node:lts-alpine3.22
-    container_name: algorithm-visualizer-with-codeeditor
     working_dir: /app
     volumes:
       - ./:/app
@@ -10,7 +9,9 @@ services:
     networks:
       - mynet
     restart: "no"
-    command: sh "./start-node.sh"
+    command: sh -c "npm install && npm start"
+    depends_on:
+      - redis
 
   gcc-container:
     image: gcc:13.4.0-bookworm
@@ -21,8 +22,10 @@ services:
       - GCC_VERSION=13.4.0
     networks:
       - mynet
+    build: ./cpp_temp
+    depends_on:
+      - redis
     restart: "no"
-    command: sh "start-gcc.sh"
   redis:
     image: redis:8.0.2-alpine3.21
     working_dir: /data
