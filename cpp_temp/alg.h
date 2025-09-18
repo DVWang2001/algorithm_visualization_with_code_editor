@@ -19,3 +19,4 @@ void drawLineBetweenCircles(string c1,string c2){
     // 使用JavaScript的Canvas API來畫線
     cout << "drawLineBetweenCircles(" << c1 << ", " << c2 << ");" << endl;
 }
+
