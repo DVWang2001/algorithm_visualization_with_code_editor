@@ -14,7 +14,7 @@ services:
       - redis
 
   gcc-container:
-    image: gcc:13.4.0-bookworm
+    # image: gcc:13.4.0-bookworm
     working_dir: /app
     volumes:
       - ./cpp_temp:/app
@@ -26,6 +26,7 @@ services:
     depends_on:
       - redis
     restart: "no"
+    entrypoint: ["sh", "worker-entrypoint.sh"]
   redis:
     image: redis:8.0.2-alpine3.21
     working_dir: /data
