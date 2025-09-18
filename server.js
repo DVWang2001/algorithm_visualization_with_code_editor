@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const Redis = require('ioredis');
 const { v4: uuidv4 } = require('uuid');
+const path = require('path');
 
 const app = express();
 const PORT = 3000;
@@ -11,6 +12,10 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use('/monaco', express.static(require('path').join(__dirname, 'node_modules/monaco-editor/min')));
 app.use(express.static('public'));
+
+app.get('/default-code', (req, res) => {
+  res.sendFile(path.join(__dirname, '/public/default.cpp'));
+});
 
 const redis = new Redis({ host: 'redis', port: 6379 }); // 連接 redis 容器，注意 hostname 與你docker-compose設定相同
 

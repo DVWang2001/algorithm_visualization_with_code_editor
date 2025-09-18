@@ -23,57 +23,138 @@
   <h3>輸出：</h3>
   <pre id="output"></pre>
 
-  <canvas id="canvas" width="400" height="300"></canvas>
+  <div id="canvas-container" style="width: 400px; height: 300px; border: 1px solid black;"></div>
 
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+<script src="https://unpkg.com/konva@9/konva.min.js"></script>
+<script>
+  
+  // 初始化 Konva 畫布
+  const stage = new Konva.Stage({
+    container: 'canvas-container',
+    width: 400,
+    height: 300,
+  });
+  const layer = new Konva.Layer();
+  stage.add(layer);
+  // 放在 <script> 區塊裡，layer 宣告完之後即可加
+  function expandStageIfNeeded(padding = 20) {
+    const rect = layer.getClientRect({ skipTransform: true });
 
-    // 定義允許的繪圖函式
-    var number = 0;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    function drawCircle(x, y, r,massage) {
-      const fixX = centerX+x;
-      const fixY = centerY+y
-      ctx.beginPath();
-      ctx.arc(fixX, fixY, r, 0, 2 * Math.PI);
-      ctx.fillStyle = "skyblue";
-      ctx.fill();
-      ctx.stroke();
-      // 設定文字
-      ctx.fillStyle = "black";
-      ctx.font = `${r}px Arial`;    // 文字大小可以依半徑調整
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+    const needW = Math.ceil(rect.x + rect.width + padding);
+    const needH = Math.ceil(rect.y + rect.height + padding);
 
-      // 畫數字在圓心
-      ctx.fillText(massage, fixX, fixY);
-      number++;
+    if (needW > stage.width() || needH > stage.height()) {
+      stage.width(needW);
+      stage.height(needH);
+
+      const container = document.getElementById('canvas-container');
+      container.style.width = needW + 'px';
+      container.style.height = needH + 'px';
+
+      stage.draw(); // 重繪
     }
+  }
+  const centerX = stage.width() / 2;
+  const centerY = stage.height() / 2;
+  let number = 0;
 
-    async function runCode() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height); // 清空畫布
-      // const code = monaco.editor.getValue();
-      const code = monaco.editor.getModels()[0].getValue();
+  // 改寫的 drawCircle：保持和 C++ 輸出格式一致
+  const circles = [];
+  function drawCircle(x, y, r, message = "") {
+    const fixX = centerX + x;
+    const fixY = centerY + y;
 
-      const res = await fetch('/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
-      });
+    const circle = new Konva.Circle({
+      x: fixX,
+      y: fixY,
+      radius: r,
+      fill: 'skyblue',
+      stroke: 'black',
+      strokeWidth: 1
+    });
 
-      const data = await res.json();
-      document.getElementById('output').textContent = data.output;
+    const label = new Konva.Text({
+      x: fixX - r,
+      y: fixY - r / 2,
+      width: r * 2,
+      height: r,
+      text: message,
+      fontSize: Math.max(r * 0.8, 10),
+      fontFamily: 'Arial',
+      align: 'center',
+      verticalAlign: 'middle',
+      fill: 'black'
+    });
 
-      try {
-        // 只執行允許的指令（安全性可再加強）
-        eval(data.output); 
-      } catch (e) {
-        alert("JS 錯誤：" + e.message);
-      }
+    layer.add(circle);
+    layer.add(label);
+
+    layer.draw();
+    circles.push(circle); 
+    return { circle, label };
+  } 
+  function drawLineBetweenCircles(c1, c2, strokeWidth = 2) {
+    const x1 = c1.x();
+    const y1 = c1.y();
+    const r1 = c1.radius();
+    const x2 = c2.x();
+    const y2 = c2.y();
+    const r2 = c2.radius();
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // 避免除以 0
+    if (dist === 0) return;
+
+    const ux = dx / dist;
+    const uy = dy / dist;
+
+    // 起點在 c1 圓周
+    const startX = x1 + ux * r1;
+    const startY = y1 + uy * r1;
+
+    // 終點在 c2 圓周
+    const endX = x2 - ux * r2;
+    const endY = y2 - uy * r2;
+
+    const line = new Konva.Line({
+      points: [startX, startY, endX, endY],
+      stroke: 'black',
+      strokeWidth,
+      lineCap: 'round',
+      lineJoin: 'round'
+    });
+
+    layer.add(line);
+    layer.draw();
+  }
+// 修改 runCode：改為清除 Konva 畫布
+  async function runCode() {
+    layer.destroyChildren();
+    circles.length = 0; // 清空 circles 陣列
+    number = 0; // 重置 number
+    const code = monaco.editor.getModels()[0].getValue();
+    
+    const res = await fetch('/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+  
+    const data = await res.json();
+    document.getElementById('output').textContent = data.output;
+  
+    try {
+      eval(data.output);
+      expandStageIfNeeded();  
+    } catch (e) {
+      alert("JS 錯誤：" + e.message);
     }
-  </script>
+  }
+  
+</script>
     <script src="/monaco/vs/loader.js"></script>
   <script>
     // 如果有多語言設定需求，可以設定 availableLanguages
@@ -86,72 +167,11 @@
       }
     });
 
-    require(['vs/editor/editor.main'], function () {
+    require(['vs/editor/editor.main'], async function () {
+      const response = await fetch('/default-code'); // 從伺服器載入預設程式碼
+      const codeText = await response.text();
       var editor = monaco.editor.create(document.getElementById('code'), {
-        value: [
-          '// 輸出 JS 指令',
-          '#include <bits/stdc++.h>',
-          '#include "alg.h"',
-          'using namespace std;',
-          'void Move(int&n) {',
-          '  int tmp = 0;',
-          '  while (n) {',
-          '    tmp += (n%10)*(n%10);',
-          '    n /= 10;',
-          '  }',
-          '  n = tmp;',
-          '}',
-          'int main() {',
-          '  // 不快樂數',
-          '  int number = 2;',
-          '  int hare,tortoise;',
-          '  // 先確定是不是快樂數',
-          '  hare = number;',
-          '  tortoise = number;',
-          '  do',
-          '  {',
-          '    Move(hare);',
-          '    Move(hare);',
-          '    Move(tortoise);',
-          '  } while (hare != tortoise);',
-          '  // 如果不是快樂數就計算環長鏈長',
-          '  if (hare != 1 && tortoise != 1) {',
-          '    // cout << "A" << endl;',
-          '    // 兔子放回原點，然後兔子和烏龜一起一步一步走',
-          '    vector<int>links;',
-          '    vector<int>cycles;',
-          '    int link = 0;',
-          '    int cycle = 0;',
-          '    int cycle_start;',
-          '    hare = number;',
-          '    do',
-          '    {',
-          '      links.push_back(hare);',
-          '      Move(hare);',
-          '      Move(tortoise);',
-          '      link++;',
-          '    } while (hare != tortoise);',
-          '    cycle_start = hare;',
-          '    // 烏龜不動兔子動',
-          '    do',
-          '    {',
-          '      cycles.push_back(hare);',
-          '      Move(hare);',
-          '      cycle++;',
-          '    } while (hare != tortoise);',
-          '    vector<pair<double,double>>cycles_location;',
-          '    for (int i = 0; i < cycles.size(); i++) {',
-          '      cycles_location.push_back(circleLocation(100,i,cycles.size()));',
-          '      drawCircle(cycles_location[i].first,cycles_location[i].second,10,to_string(cycles[i]));',
-          '    }',
-          '  }',
-          '  else {',
-          '    // 輸出間隔為半徑2倍的鏈',
-          '    // cout << "B" << endl;',
-          '  }',
-          '  return 0;',
-          '}'
-        ].join('\n'),
+        value: codeText,
         language: 'cpp',
         automaticLayout: true
       });

@@ -1,4 +1,4 @@
-FROM gcc:latest
+FROM gcc:13.4.0-bookworm
 
 RUN apt update && apt install -y redis-tools jq coreutils
 
