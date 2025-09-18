@@ -12,7 +12,7 @@ void Move(int&n) {
 }
 int main() {
   // 不快樂數
-  int number = 2;
+  int number = 7;
   int hare, tortoise;
   // 先確定是不是快樂數
   hare = number;
@@ -122,7 +122,17 @@ int main() {
     }
   } else {
     // 是快樂數
-    drawCircle(0, 0,0,0, r, "Happy");
+    int node = number;
+    int preNode = -1;
+    for (int i = 0; node != preNode; i++) {
+      drawCircle(i*100, 0,0,0, r, to_string(node));
+      if (i > 0) {
+        drawLineBetweenCircles("circles[" + to_string(i - 1) + "]",
+                               "circles[" + to_string(i) + "]");
+      }
+      preNode = node;
+      Move(node);
+    }
   }
 
   return 0;
